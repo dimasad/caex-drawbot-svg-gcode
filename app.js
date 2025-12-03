@@ -9,6 +9,10 @@ class PenPlotterConverter {
         this.canvas = document.getElementById('canvas');
         this.ctx = this.canvas.getContext('2d');
         
+        // Algorithm constants
+        this.MAX_SEGMENT_GAP = 5;  // Maximum distance between points in the same segment
+        this.BEZIER_SEGMENTS = 10;  // Number of line segments to approximate Bézier curves
+        
         this.initializeEventListeners();
     }
 
@@ -221,7 +225,7 @@ class PenPlotterConverter {
             const dist = Math.sqrt((curr.x - prev.x) ** 2 + (curr.y - prev.y) ** 2);
             
             // If points are close enough, continue segment
-            if (dist < 5) {
+            if (dist < this.MAX_SEGMENT_GAP) {
                 currentSegment.push(curr);
             } else {
                 // Start new segment
@@ -395,7 +399,7 @@ class PenPlotterConverter {
                             cmd.x1, cmd.y1,
                             cmd.x2, cmd.y2,
                             cmd.x, cmd.y,
-                            10
+                            this.BEZIER_SEGMENTS
                         );
                         
                         segments.forEach(point => {
