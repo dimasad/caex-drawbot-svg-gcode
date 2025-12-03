@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pen Plotter Image to G-Code Converter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 0;
+            min-height: 600px;
+        }
+
+        .controls {
+            background: #f8f9fa;
+            padding: 30px;
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
+            max-height: calc(100vh - 200px);
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #495057;
+            font-size: 0.9em;
+        }
+
+        .control-group input[type="number"],
+        .control-group input[type="range"],
+        .control-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 0.95em;
+            transition: border-color 0.2s;
+        }
+
+        .control-group input[type="number"]:focus,
+        .control-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .control-group input[type="range"] {
+            padding: 0;
+            cursor: pointer;
+        }
+
+        .range-value {
+            display: inline-block;
+            margin-left: 10px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .button {
+            width: 100%;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-bottom: 10px;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .button-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: white;
+            border: 2px dashed #667eea;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .file-input-label:hover {
+            background: #f8f9fa;
+            border-color: #764ba2;
+        }
+
+        .display-area {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .preview-container {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-container svg {
+            max-width: 100%;
+            max-height: 500px;
+            border: 1px solid #dee2e6;
+            background: white;
+        }
+
+        .placeholder {
+            text-align: center;
+            color: #adb5bd;
+            padding: 40px;
+        }
+
+        .placeholder-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .gcode-output {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .gcode-output h3 {
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .gcode-content {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre;
+        }
+
+        .status {
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        canvas {
+            display: none;
+        }
+
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                border-right: none;
+                border-bottom: 1px solid #dee2e6;
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🖊️ Pen Plotter Image Converter</h1>
+            <p>Transform raster images into beautiful pen plotter paths using the Hatch Sawtooth algorithm</p>
+        </header>
+
+        <div class="main-content">
+            <div class="controls">
+                <div class="control-group">
+                    <label>Upload Image</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="imageInput" accept="image/*">
+                        <label for="imageInput" class="file-input-label">
+                            📁 Choose Image File
+                        </label>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Line Spacing (pixels)</label>
+                    <input type="number" id="lineSpacing" value="5" min="1" max="50" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label>Angle (degrees)</label>
+                    <input type="number" id="angle" value="45" min="0" max="180" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label>Wave Amplitude</label>
+                    <input type="number" id="waveAmplitude" value="10" min="0" max="50" step="0.5">
+                </div>
+
+                <div class="control-group">
+                    <label>Wave Frequency</label>
+                    <input type="number" id="waveFrequency" value="0.1" min="0.01" max="1" step="0.01">
+                </div>
+
+                <div class="control-group">
+                    <label>Brightness Threshold</label>
+                    <input type="range" id="threshold" value="128" min="0" max="255" step="1">
+                    <span class="range-value" id="thresholdValue">128</span>
+                </div>
+
+                <div class="control-group">
+                    <label>Minimum Line Length</label>
+                    <input type="number" id="minLineLength" value="5" min="0" max="100" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label>Pen Width (visualization)</label>
+                    <input type="range" id="penWidth" value="1" min="0.1" max="5" step="0.1">
+                    <span class="range-value" id="penWidthValue">1.0</span>
+                </div>
+
+                <div class="control-group">
+                    <label>Canvas Width</label>
+                    <input type="number" id="canvasWidth" value="800" min="100" max="2000" step="10">
+                </div>
+
+                <div class="control-group">
+                    <label>Canvas Height</label>
+                    <input type="number" id="canvasHeight" value="600" min="100" max="2000" step="10">
+                </div>
+
+                <button class="button" id="generateBtn" disabled>Generate SVG Path</button>
+                <button class="button button-secondary" id="generateGCodeBtn" disabled>Generate G-Code</button>
+                <button class="button button-secondary" id="downloadSVGBtn" disabled>Download SVG</button>
+                <button class="button button-secondary" id="downloadGCodeBtn" disabled>Download G-Code</button>
+            </div>
+
+            <div class="display-area">
+                <div id="status" class="status"></div>
+                
+                <div class="preview-container" id="svgContainer">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">🎨</div>
+                        <p>Upload an image to get started</p>
+                    </div>
+                </div>
+
+                <div class="gcode-output" id="gcodeOutput" style="display: none;">
+                    <h3>G-Code Output</h3>
+                    <div class="gcode-content" id="gcodeContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script src="app.js"></script>
+</body>
+</html>
