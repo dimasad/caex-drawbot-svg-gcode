@@ -1,0 +1,23 @@
+{
+  "name": "pen-plotter-converter",
+  "version": "1.0.0",
+  "description": "Web-based pen plotter image to G-Code converter using hatch sawtooth algorithm",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "serve": "http-server -p 8083"
+  },
+  "keywords": [
+    "pen-plotter",
+    "g-code",
+    "svg",
+    "hatch-sawtooth"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "http-server": "^14.1.1"
+  }
+}

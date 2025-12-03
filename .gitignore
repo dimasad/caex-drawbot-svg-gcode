@@ -10,3 +10,9 @@ build/
 # Test outputs - exclude large files
 test-outputs/*.gcode
 test-outputs/*.svg
+
+# Playwright test artifacts
+test-results/
+playwright-report/
+playwright/.cache/
+package-lock.json
