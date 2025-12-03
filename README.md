@@ -2,6 +2,8 @@
 
 A web-based tool that transforms raster images into beautiful pen plotter paths using the Hatch Sawtooth algorithm with Centripetal Catmull-Rom splines.
 
+Access the page at https://dimasad.github.io/caex-drawbot-svg-gcode/
+
 ## Features
 
 - **Image Upload**: Upload any raster image (PNG, JPG, etc.)
