@@ -187,11 +187,6 @@ class PenPlotterConverter {
             
             if (points.length >= 2) {
                 paths.push(points);
-                
-                // Link ends between consecutive lines if enabled
-                if (linkEnds && i < numLines - 1 && paths.length >= 2) {
-                    // The next line will be generated in reverse, so we'll link naturally
-                }
             }
         }
         
@@ -306,7 +301,7 @@ class PenPlotterConverter {
         return length;
     }
 
-    // Convert Catmull-Rom spline to cubic Bézier curves with configurable tension
+    // Convert points to cubic Bézier curves using Cardinal spline with configurable tension
     catmullRomToBezier(points, tension = 0.5) {
         if (points.length < 2) return [];
         
@@ -318,10 +313,10 @@ class PenPlotterConverter {
             return points;
         }
         
-        // Catmull-Rom implementation with tension parameter
-        // tension = 0: cardinal spline (loose)
-        // tension = 0.5: Catmull-Rom spline (balanced)
-        // tension = 1: tight curve
+        // Cardinal spline implementation with tension parameter
+        // tension = 0: loose curves
+        // tension = 0.5: Catmull-Rom equivalent (balanced)
+        // tension = 1: tight curves
         const s = (1 - tension) / 2;
         
         for (let i = 0; i < points.length - 1; i++) {
