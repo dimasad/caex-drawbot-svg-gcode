@@ -297,24 +297,47 @@
                 </div>
 
                 <div class="control-group">
-                    <label>Wave Amplitude</label>
-                    <input type="number" id="waveAmplitude" value="10" min="0" max="50" step="0.5">
+                    <label>Max Amplitude (pixels)</label>
+                    <input type="number" id="maxAmplitude" value="10" min="0" max="50" step="0.5">
                 </div>
 
                 <div class="control-group">
-                    <label>Wave Frequency</label>
-                    <input type="number" id="waveFrequency" value="0.1" min="0.01" max="1" step="0.01">
+                    <label>Min Frequency</label>
+                    <input type="number" id="minFrequency" value="0.05" min="0.01" max="1" step="0.01">
                 </div>
 
                 <div class="control-group">
-                    <label>Brightness Threshold</label>
-                    <input type="range" id="threshold" value="128" min="0" max="255" step="1">
-                    <span class="range-value" id="thresholdValue">128</span>
+                    <label>Max Frequency</label>
+                    <input type="number" id="maxFrequency" value="0.2" min="0.01" max="1" step="0.01">
                 </div>
 
                 <div class="control-group">
-                    <label>Minimum Line Length</label>
-                    <input type="number" id="minLineLength" value="5" min="0" max="100" step="1">
+                    <label>Link Ends</label>
+                    <select id="linkEnds">
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Min Velocity</label>
+                    <input type="number" id="minVelocity" value="0.5" min="0" max="2" step="0.1">
+                </div>
+
+                <div class="control-group">
+                    <label>Max Velocity</label>
+                    <input type="number" id="maxVelocity" value="2" min="0" max="5" step="0.1">
+                </div>
+
+                <div class="control-group">
+                    <label>Curve Tension</label>
+                    <input type="range" id="curveTension" value="0.5" min="0" max="1" step="0.1">
+                    <span class="range-value" id="curveTensionValue">0.5</span>
+                </div>
+
+                <div class="control-group">
+                    <label>Cell Size (brightness sampling)</label>
+                    <input type="number" id="cellSize" value="3" min="1" max="10" step="1">
                 </div>
 
                 <div class="control-group">

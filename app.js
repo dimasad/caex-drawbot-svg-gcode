@@ -24,12 +24,12 @@ class PenPlotterConverter {
         document.getElementById('downloadGCodeBtn').addEventListener('click', () => this.downloadGCode());
         
         // Update range value displays
-        document.getElementById('threshold').addEventListener('input', (e) => {
-            document.getElementById('thresholdValue').textContent = e.target.value;
-        });
-        
         document.getElementById('penWidth').addEventListener('input', (e) => {
             document.getElementById('penWidthValue').textContent = parseFloat(e.target.value).toFixed(1);
+        });
+        
+        document.getElementById('curveTension').addEventListener('input', (e) => {
+            document.getElementById('curveTensionValue').textContent = parseFloat(e.target.value).toFixed(1);
         });
     }
 
@@ -119,19 +119,27 @@ class PenPlotterConverter {
         try {
             const lineSpacing = parseFloat(document.getElementById('lineSpacing').value);
             const angle = parseFloat(document.getElementById('angle').value);
-            const waveAmplitude = parseFloat(document.getElementById('waveAmplitude').value);
-            const waveFrequency = parseFloat(document.getElementById('waveFrequency').value);
-            const threshold = parseFloat(document.getElementById('threshold').value);
-            const minLineLength = parseFloat(document.getElementById('minLineLength').value);
+            const maxAmplitude = parseFloat(document.getElementById('maxAmplitude').value);
+            const minFrequency = parseFloat(document.getElementById('minFrequency').value);
+            const maxFrequency = parseFloat(document.getElementById('maxFrequency').value);
+            const linkEnds = document.getElementById('linkEnds').value === 'true';
+            const minVelocity = parseFloat(document.getElementById('minVelocity').value);
+            const maxVelocity = parseFloat(document.getElementById('maxVelocity').value);
+            const curveTension = parseFloat(document.getElementById('curveTension').value);
+            const cellSize = parseFloat(document.getElementById('cellSize').value);
             const penWidth = parseFloat(document.getElementById('penWidth').value);
 
             const paths = this.generateHatchSawtoothPaths(
                 lineSpacing,
                 angle,
-                waveAmplitude,
-                waveFrequency,
-                threshold,
-                minLineLength
+                maxAmplitude,
+                minFrequency,
+                maxFrequency,
+                linkEnds,
+                minVelocity,
+                maxVelocity,
+                curveTension,
+                cellSize
             );
 
             this.currentSVG = this.createSVG(paths, penWidth);
@@ -147,7 +155,7 @@ class PenPlotterConverter {
         }
     }
 
-    generateHatchSawtoothPaths(lineSpacing, angle, waveAmplitude, waveFrequency, threshold, minLineLength) {
+    generateHatchSawtoothPaths(lineSpacing, angle, maxAmplitude, minFrequency, maxFrequency, linkEnds, minVelocity, maxVelocity, curveTension, cellSize) {
         const width = this.imageData.width;
         const height = this.imageData.height;
         const angleRad = (angle * Math.PI) / 180;
@@ -158,96 +166,134 @@ class PenPlotterConverter {
         const diagonal = Math.sqrt(width * width + height * height);
         const numLines = Math.ceil(diagonal / lineSpacing);
         
-        for (let i = -numLines; i <= numLines; i++) {
-            const offset = i * lineSpacing;
-            const points = this.generateLinePoints(offset, angleRad, waveAmplitude, waveFrequency, threshold, width, height);
+        // Generate lines in a zigzag pattern (forward, then backward)
+        for (let i = 0; i < numLines; i++) {
+            const offset = i * lineSpacing - diagonal / 2;
+            const isReverse = (i % 2 === 1); // Alternate direction for zigzag
+            
+            const points = this.generateLinePoints(
+                offset, 
+                angleRad, 
+                maxAmplitude, 
+                minFrequency, 
+                maxFrequency, 
+                minVelocity, 
+                maxVelocity, 
+                cellSize,
+                width, 
+                height,
+                isReverse
+            );
             
             if (points.length >= 2) {
-                const segments = this.splitIntoSegments(points, minLineLength);
+                paths.push(points);
                 
-                for (const segment of segments) {
-                    if (segment.length >= 2) {
-                        paths.push(segment);
-                    }
+                // Link ends between consecutive lines if enabled
+                if (linkEnds && i < numLines - 1 && paths.length >= 2) {
+                    // The next line will be generated in reverse, so we'll link naturally
                 }
             }
+        }
+        
+        // If linkEnds is true, connect all paths into one continuous path
+        if (linkEnds && paths.length > 0) {
+            const linkedPath = [];
+            for (let i = 0; i < paths.length; i++) {
+                linkedPath.push(...paths[i]);
+            }
+            return [linkedPath];
         }
         
         return paths;
     }
 
-    generateLinePoints(offset, angleRad, waveAmplitude, waveFrequency, threshold, width, height) {
+    generateLinePoints(offset, angleRad, maxAmplitude, minFrequency, maxFrequency, minVelocity, maxVelocity, cellSize, width, height, isReverse) {
         const points = [];
         const cos = Math.cos(angleRad);
         const sin = Math.sin(angleRad);
         
-        // Calculate perpendicular direction
+        // Calculate perpendicular direction (for the line offset)
         const perpX = -sin;
         const perpY = cos;
         
         // Sample along the line
-        const sampleDistance = 1;
-        const maxLength = Math.sqrt(width * width + height * height) * 2;
+        const diagonal = Math.sqrt(width * width + height * height);
         
-        for (let t = -maxLength; t <= maxLength; t += sampleDistance) {
+        // Start and end points for the line crossing the image
+        let t = -diagonal;
+        let tEnd = diagonal;
+        
+        // Track position along the wave for continuous oscillation
+        let wavePhase = 0;
+        
+        while (t <= tEnd) {
             // Base position along the line
             const baseX = perpX * offset + cos * t + width / 2;
             const baseY = perpY * offset + sin * t + height / 2;
             
-            // Add sawtooth wave displacement
-            const wave = waveAmplitude * Math.sin(t * waveFrequency);
-            const x = baseX + perpX * wave;
-            const y = baseY + perpY * wave;
-            
-            // Check if point is within bounds
-            if (x >= 0 && x < width && y >= 0 && y < height) {
-                const brightness = this.getBrightness(x, y);
+            // Check if base point is within bounds
+            if (baseX >= 0 && baseX < width && baseY >= 0 && baseY < height) {
+                // Get average brightness of cell around this point
+                const brightness = this.getAverageBrightness(baseX, baseY, cellSize);
                 
-                // Draw in darker areas (below threshold)
-                if (brightness < threshold) {
-                    points.push({ x, y, brightness });
-                }
+                // Normalize brightness to 0-1 range (0 = black, 1 = white)
+                const normalizedBrightness = brightness / 255;
+                
+                // Calculate amplitude: dark areas = full amplitude, light areas = zero
+                const amplitude = maxAmplitude * (1 - normalizedBrightness);
+                
+                // Calculate frequency: dark areas = high frequency, light areas = low frequency
+                const frequency = minFrequency + (maxFrequency - minFrequency) * (1 - normalizedBrightness);
+                
+                // Calculate velocity (step size): dark areas = slower (more detail), light areas = faster
+                const velocity = minVelocity + (maxVelocity - minVelocity) * normalizedBrightness;
+                
+                // Add sawtooth wave displacement perpendicular to the line direction
+                const wave = amplitude * Math.sin(wavePhase);
+                const x = baseX + perpX * wave;
+                const y = baseY + perpY * wave;
+                
+                // Add point
+                points.push({ x, y, brightness });
+                
+                // Update wave phase based on frequency
+                wavePhase += frequency;
+                
+                // Move to next point along the line based on velocity
+                t += velocity;
+            } else {
+                // Move forward even if outside bounds
+                t += maxVelocity;
             }
+        }
+        
+        // Reverse the points if this is a return line
+        if (isReverse) {
+            points.reverse();
         }
         
         return points;
     }
 
-    splitIntoSegments(points, minLineLength) {
-        if (points.length === 0) return [];
+    // Get average brightness of a cell around a point
+    getAverageBrightness(cx, cy, cellSize) {
+        let sum = 0;
+        let count = 0;
+        const halfCell = Math.floor(cellSize / 2);
         
-        const segments = [];
-        let currentSegment = [points[0]];
-        
-        for (let i = 1; i < points.length; i++) {
-            const prev = points[i - 1];
-            const curr = points[i];
-            const dist = Math.sqrt((curr.x - prev.x) ** 2 + (curr.y - prev.y) ** 2);
-            
-            // If points are close enough, continue segment
-            if (dist < this.MAX_SEGMENT_GAP) {
-                currentSegment.push(curr);
-            } else {
-                // Start new segment
-                if (currentSegment.length >= 2) {
-                    const length = this.calculatePathLength(currentSegment);
-                    if (length >= minLineLength) {
-                        segments.push(currentSegment);
-                    }
+        for (let dy = -halfCell; dy <= halfCell; dy++) {
+            for (let dx = -halfCell; dx <= halfCell; dx++) {
+                const x = Math.floor(cx + dx);
+                const y = Math.floor(cy + dy);
+                
+                if (x >= 0 && x < this.imageData.width && y >= 0 && y < this.imageData.height) {
+                    sum += this.getBrightness(x, y);
+                    count++;
                 }
-                currentSegment = [curr];
             }
         }
         
-        // Add last segment
-        if (currentSegment.length >= 2) {
-            const length = this.calculatePathLength(currentSegment);
-            if (length >= minLineLength) {
-                segments.push(currentSegment);
-            }
-        }
-        
-        return segments;
+        return count > 0 ? sum / count : 255;
     }
 
     calculatePathLength(points) {
@@ -260,8 +306,8 @@ class PenPlotterConverter {
         return length;
     }
 
-    // Convert Catmull-Rom spline to cubic Bézier curves
-    catmullRomToBezier(points) {
+    // Convert Catmull-Rom spline to cubic Bézier curves with configurable tension
+    catmullRomToBezier(points, tension = 0.5) {
         if (points.length < 2) return [];
         
         const bezierSegments = [];
@@ -272,23 +318,27 @@ class PenPlotterConverter {
             return points;
         }
         
-        // Centripetal Catmull-Rom implementation
+        // Catmull-Rom implementation with tension parameter
+        // tension = 0: cardinal spline (loose)
+        // tension = 0.5: Catmull-Rom spline (balanced)
+        // tension = 1: tight curve
+        const s = (1 - tension) / 2;
+        
         for (let i = 0; i < points.length - 1; i++) {
             const p0 = i > 0 ? points[i - 1] : points[i];
             const p1 = points[i];
             const p2 = points[i + 1];
             const p3 = i < points.length - 2 ? points[i + 2] : points[i + 1];
             
-            // Calculate control points for cubic Bézier
-            // Using Catmull-Rom to Bézier conversion with tension = 0
+            // Calculate control points for cubic Bézier using tension
             const cp1 = {
-                x: p1.x + (p2.x - p0.x) / 6,
-                y: p1.y + (p2.y - p0.y) / 6
+                x: p1.x + s * (p2.x - p0.x),
+                y: p1.y + s * (p2.y - p0.y)
             };
             
             const cp2 = {
-                x: p2.x - (p3.x - p1.x) / 6,
-                y: p2.y - (p3.y - p1.y) / 6
+                x: p2.x - s * (p3.x - p1.x),
+                y: p2.y - s * (p3.y - p1.y)
             };
             
             bezierSegments.push({
@@ -305,13 +355,14 @@ class PenPlotterConverter {
     createSVG(paths, penWidth) {
         const width = this.imageData.width;
         const height = this.imageData.height;
+        const curveTension = parseFloat(document.getElementById('curveTension').value);
         
         let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">`;
         svg += `<rect width="${width}" height="${height}" fill="white"/>`;
         svg += `<g stroke="black" fill="none" stroke-width="${penWidth}" stroke-linecap="round" stroke-linejoin="round">`;
         
         for (const path of paths) {
-            const bezierSegments = this.catmullRomToBezier(path);
+            const bezierSegments = this.catmullRomToBezier(path, curveTension);
             
             if (bezierSegments.length === 0) continue;
             
