@@ -7,6 +7,7 @@
 
 const { test, expect } = require('@playwright/test');
 const path = require('path');
+const fs = require('fs');
 
 test.describe('Pen Plotter Image Converter UI Tests', () => {
     test.beforeEach(async ({ page }) => {
@@ -189,14 +190,6 @@ test.describe('Pen Plotter Image Converter UI Tests', () => {
     });
 
     test('should handle different parameter values without errors', async ({ page }) => {
-        // Set up console error listener
-        const consoleErrors = [];
-        page.on('console', msg => {
-            if (msg.type() === 'error') {
-                consoleErrors.push(msg.text());
-            }
-        });
-        
         // Upload test image
         const fileInput = page.locator('#imageInput');
         const testImagePath = path.join(__dirname, 'test-images', 'wv-logo.png');
@@ -219,8 +212,11 @@ test.describe('Pen Plotter Image Converter UI Tests', () => {
         const svg = page.locator('#svgContainer svg');
         await expect(svg).toBeVisible();
         
-        // Verify no console errors occurred
-        expect(consoleErrors.length).toBe(0);
+        // Check console for errors
+        const messages = await page.evaluate(() => {
+            return window.__consoleErrors || [];
+        });
+        expect(messages.length).toBe(0);
     });
 
     test('should not have any console errors on page load', async ({ page }) => {
