@@ -6,3 +6,7 @@ node_modules/
 dist/
 build/
 *.tmp
+
+# Test outputs - exclude large files
+test-outputs/*.gcode
+test-outputs/*.svg

@@ -1,0 +1,17 @@
+{
+  "name": "zebra-default",
+  "image": "/tmp/zebra.jpg",
+  "lineSpacing": 5,
+  "angle": 45,
+  "maxAmplitude": 10,
+  "minFrequency": 0.05,
+  "maxFrequency": 0.2,
+  "linkEnds": true,
+  "minVelocity": 0.5,
+  "maxVelocity": 2,
+  "curveTension": 0.5,
+  "cellSize": 3,
+  "penWidth": 1,
+  "width": 800,
+  "height": 600
+}

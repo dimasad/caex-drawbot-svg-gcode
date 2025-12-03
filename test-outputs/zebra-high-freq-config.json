@@ -1,0 +1,17 @@
+{
+  "name": "zebra-high-freq",
+  "image": "/tmp/zebra.jpg",
+  "lineSpacing": 4,
+  "angle": 0,
+  "maxAmplitude": 15,
+  "minFrequency": 0.08,
+  "maxFrequency": 0.4,
+  "linkEnds": true,
+  "minVelocity": 0.3,
+  "maxVelocity": 1.5,
+  "curveTension": 0.7,
+  "cellSize": 5,
+  "penWidth": 0.8,
+  "width": 800,
+  "height": 600
+}
